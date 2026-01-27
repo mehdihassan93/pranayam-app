@@ -21,7 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.pranayam.app.ui.components.PrimaryButton
 import com.pranayam.app.ui.components.PranayamTextField
 import com.pranayam.app.ui.theme.*
@@ -31,7 +31,7 @@ import com.pranayam.app.viewmodel.OnboardingViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingScreen(
-    viewModel: OnboardingViewModel = viewModel(),
+    viewModel: OnboardingViewModel = hiltViewModel(),
     onComplete: () -> Unit
 ) {
     val currentStep by viewModel.currentStep.collectAsState()
