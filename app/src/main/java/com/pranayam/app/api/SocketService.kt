@@ -1,5 +1,6 @@
 package com.pranayam.app.api
 
+import com.pranayam.app.BuildConfig
 import io.socket.client.IO
 import io.socket.client.Socket
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -11,13 +12,13 @@ import javax.inject.Singleton
 @Singleton
 class SocketService @Inject constructor() {
     private var socket: Socket? = null
-    
+
     private val _messageFlow = MutableSharedFlow<JSONObject>()
     val messageFlow: SharedFlow<JSONObject> = _messageFlow
-    
+
     private val _statusFlow = MutableSharedFlow<JSONObject>()
     val statusFlow: SharedFlow<JSONObject> = _statusFlow
-    
+
     private val _typingFlow = MutableSharedFlow<JSONObject>()
     val typingFlow: SharedFlow<JSONObject> = _typingFlow
 
@@ -25,8 +26,7 @@ class SocketService @Inject constructor() {
         try {
             val opts = IO.Options()
             opts.query = "userId=$userId"
-            // 10.0.2.2 maps to host machine's localhost from Android Emulator
-            socket = IO.socket("http://10.0.2.2:3000", opts)
+            socket = IO.socket(BuildConfig.SOCKET_URL, opts)
             
             socket?.on(Socket.EVENT_CONNECT) {
                 println("Socket Connected")

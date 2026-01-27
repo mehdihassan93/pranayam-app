@@ -1,5 +1,6 @@
 package com.pranayam.app.di
 
+import com.pranayam.app.BuildConfig
 import com.pranayam.app.api.PranayamApiService
 import dagger.Module
 import dagger.Provides
@@ -15,9 +16,8 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    // For Android Emulator: 10.0.2.2 maps to host machine's localhost
-    // For physical device: use your machine's local IP (e.g., 192.168.x.x)
-    private const val BASE_URL = "http://10.0.2.2:3000/api/v1/"
+    // Base URL is configured in build.gradle.kts per build type
+    private const val BASE_URL = BuildConfig.API_BASE_URL
 
     @Provides
     @Singleton

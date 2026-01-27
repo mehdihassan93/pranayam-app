@@ -18,15 +18,32 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Default API URL for emulator
+        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:3000/api/v1/\"")
+        buildConfigField("String", "SOCKET_URL", "\"http://10.0.2.2:3000\"")
     }
 
     buildTypes {
+        debug {
+            // For beta testing with localtunnel, override with:
+            // ./gradlew assembleDebug -PAPI_BASE_URL="https://pranayam-beta.loca.lt/api/v1/"
+            val betaUrl = project.findProperty("API_BASE_URL") as String?
+            if (betaUrl != null) {
+                buildConfigField("String", "API_BASE_URL", "\"$betaUrl\"")
+                val socketUrl = betaUrl.replace("/api/v1/", "")
+                buildConfigField("String", "SOCKET_URL", "\"$socketUrl\"")
+            }
+        }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Production URL - update before release
+            buildConfigField("String", "API_BASE_URL", "\"https://api.pranayam.app/api/v1/\"")
+            buildConfigField("String", "SOCKET_URL", "\"https://api.pranayam.app\"")
         }
     }
     compileOptions {
@@ -38,6 +55,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
