@@ -75,13 +75,13 @@ jobs:
 
     steps:
       - name: Download APK
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: release-apk
           path: ./apk
 
       - name: Download AAB
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: release-aab
           path: ./aab
@@ -103,7 +103,7 @@ jobs:
   #
   #   steps:
   #     - name: Download AAB
-  #       uses: actions/download-artifact@v4
+  #       uses: actions/download-artifact@v7
   #       with:
   #         name: release-aab
   #         path: ./aab
