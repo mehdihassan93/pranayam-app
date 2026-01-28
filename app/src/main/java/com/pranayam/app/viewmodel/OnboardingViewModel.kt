@@ -1,6 +1,7 @@
 package com.pranayam.app.viewmodel
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pranayam.app.api.PranayamApiService
@@ -42,8 +43,8 @@ class OnboardingViewModel @Inject constructor(
     private val _selectedInterests = MutableStateFlow<Set<String>>(emptySet())
     val selectedInterests: StateFlow<Set<String>> = _selectedInterests.asStateFlow()
 
-    private val _photos = MutableStateFlow<List<String>>(emptyList())
-    val photos: StateFlow<List<String>> = _photos.asStateFlow()
+    private val _photos = MutableStateFlow<List<Uri>>(emptyList())
+    val photos: StateFlow<List<Uri>> = _photos.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -62,6 +63,21 @@ class OnboardingViewModel @Inject constructor(
         if (current.contains(interest)) current.remove(interest)
         else current.add(interest)
         _selectedInterests.value = current
+    }
+
+    fun addPhotos(uris: List<Uri>) {
+        val current = _photos.value.toMutableList()
+        val remaining = 6 - current.size
+        current.addAll(uris.take(remaining))
+        _photos.value = current
+    }
+
+    fun removePhoto(index: Int) {
+        val current = _photos.value.toMutableList()
+        if (index in current.indices) {
+            current.removeAt(index)
+            _photos.value = current
+        }
     }
 
     fun nextStep() {

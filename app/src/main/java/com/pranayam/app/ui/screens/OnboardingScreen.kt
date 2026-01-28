@@ -1,5 +1,9 @@
 package com.pranayam.app.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -8,20 +12,28 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.pranayam.app.ui.components.PrimaryButton
 import com.pranayam.app.ui.components.PranayamTextField
 import com.pranayam.app.ui.theme.*
@@ -39,6 +51,7 @@ fun OnboardingScreen(
     val dob by viewModel.dob.collectAsState()
     val gender by viewModel.gender.collectAsState()
     val selectedInterests by viewModel.selectedInterests.collectAsState()
+    val photos by viewModel.photos.collectAsState()
 
     Scaffold(
         topBar = {
@@ -96,7 +109,11 @@ fun OnboardingScreen(
                             selectedInterests,
                             viewModel::toggleInterest
                         )
-                        OnboardingStep.PHOTOS -> StepPhotos()
+                        OnboardingStep.PHOTOS -> StepPhotos(
+                            photos = photos,
+                            onAddPhotos = viewModel::addPhotos,
+                            onRemovePhoto = viewModel::removePhoto
+                        )
                     }
                 }
             }
@@ -207,27 +224,168 @@ fun StepInterests(
 }
 
 @Composable
-fun StepPhotos() {
+fun StepPhotos(
+    photos: List<Uri>,
+    onAddPhotos: (List<Uri>) -> Unit,
+    onRemovePhoto: (Int) -> Unit
+) {
+    val context = LocalContext.current
+    val maxPhotos = 6
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = maxPhotos - photos.size)
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            onAddPhotos(uris)
+        }
+    }
+
     Column {
         Text("Add Photos", style = PranayamTypography.H2)
-        Text("Add at least 2 photos to continue", style = PranayamTypography.BodyMedium, color = Color.Gray)
+        Text(
+            text = if (photos.size < 2)
+                "Add at least 2 photos to continue"
+            else
+                "${photos.size} of $maxPhotos photos added",
+            style = PranayamTypography.BodyMedium,
+            color = if (photos.size < 2) Color.Gray else PranayamColors.RosePrimary
+        )
         Spacer(Modifier.height(Spacing.XL))
-        // Simplified photo grid placeholder
+
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(6) {
-                Box(
-                    modifier = Modifier
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.LightGray.copy(alpha = 0.5f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("+", fontSize = 24.sp, color = Color.Gray)
-                }
+            // Show selected photos
+            itemsIndexed(photos) { index, uri ->
+                PhotoItem(
+                    uri = uri,
+                    onRemove = { onRemovePhoto(index) },
+                    isPrimary = index == 0
+                )
+            }
+
+            // Show add buttons for remaining slots
+            val remainingSlots = maxPhotos - photos.size
+            items(remainingSlots) { index ->
+                AddPhotoButton(
+                    onClick = {
+                        photoPickerLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    isPrimary = photos.isEmpty() && index == 0
+                )
+            }
+        }
+
+        if (photos.isNotEmpty()) {
+            Spacer(Modifier.height(Spacing.M))
+            Text(
+                text = "Tip: Your first photo will be your main profile picture",
+                style = PranayamTypography.BodySmall,
+                color = Color.Gray
+            )
+        }
+    }
+}
+
+@Composable
+private fun PhotoItem(
+    uri: Uri,
+    onRemove: () -> Unit,
+    isPrimary: Boolean
+) {
+    val context = LocalContext.current
+
+    Box(
+        modifier = Modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(12.dp))
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(uri)
+                .crossfade(true)
+                .build(),
+            contentDescription = "Selected photo",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        // Remove button
+        IconButton(
+            onClick = onRemove,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(4.dp)
+                .size(24.dp)
+                .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Remove photo",
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+
+        // Primary badge
+        if (isPrimary) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(4.dp),
+                shape = RoundedCornerShape(4.dp),
+                color = PranayamColors.RosePrimary
+            ) {
+                Text(
+                    text = "Main",
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                    style = PranayamTypography.BodySmall,
+                    color = Color.White
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddPhotoButton(
+    onClick: () -> Unit,
+    isPrimary: Boolean
+) {
+    Surface(
+        modifier = Modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(
+            width = 2.dp,
+            color = if (isPrimary) PranayamColors.RosePrimary else Color.LightGray
+        ),
+        color = if (isPrimary) PranayamColors.RosePrimary.copy(alpha = 0.1f) else Color.LightGray.copy(alpha = 0.2f)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "Add photo",
+                tint = if (isPrimary) PranayamColors.RosePrimary else Color.Gray,
+                modifier = Modifier.size(32.dp)
+            )
+            if (isPrimary) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = "Add",
+                    style = PranayamTypography.BodySmall,
+                    color = PranayamColors.RosePrimary
+                )
             }
         }
     }
