@@ -1,14 +1,13 @@
 package com.pranayam.app.viewmodel
 
-import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pranayam.app.api.PranayamApiService
 import com.pranayam.app.api.UpdateProfileRequest
+import com.pranayam.app.di.UserSessionManager
 import com.pranayam.app.repository.PranayamRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,10 +22,8 @@ enum class OnboardingStep {
 class OnboardingViewModel @Inject constructor(
     private val repository: PranayamRepository,
     private val apiService: PranayamApiService,
-    @ApplicationContext private val context: Context
+    private val sessionManager: UserSessionManager
 ) : ViewModel() {
-
-    private val prefs = context.getSharedPreferences("pranayam_auth", Context.MODE_PRIVATE)
 
     private val _currentStep = MutableStateFlow(OnboardingStep.NAME)
     val currentStep: StateFlow<OnboardingStep> = _currentStep.asStateFlow()
@@ -121,7 +118,7 @@ class OnboardingViewModel @Inject constructor(
             } finally {
                 _isLoading.value = false
                 // Always mark onboarding complete and proceed
-                prefs.edit().putBoolean("onboarding_complete", true).apply()
+                sessionManager.saveOnboardingComplete(true)
                 onSuccess()
             }
         }

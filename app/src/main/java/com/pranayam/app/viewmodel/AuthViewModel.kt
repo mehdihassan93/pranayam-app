@@ -1,13 +1,12 @@
 package com.pranayam.app.viewmodel
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pranayam.app.api.PranayamApiService
 import com.pranayam.app.api.SendOtpRequest
 import com.pranayam.app.api.VerifyOtpRequest
+import com.pranayam.app.di.UserSessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,10 +24,8 @@ sealed class AuthState {
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val apiService: PranayamApiService,
-    @ApplicationContext private val context: Context
+    private val sessionManager: UserSessionManager
 ) : ViewModel() {
-
-    private val prefs = context.getSharedPreferences("pranayam_auth", Context.MODE_PRIVATE)
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
@@ -50,6 +47,11 @@ class AuthViewModel @Inject constructor(
     }
 
     fun sendOtp() {
+        if (!isValidPhoneNumber()) {
+            _authState.value = AuthState.Error("Please enter a valid 10-digit phone number")
+            return
+        }
+
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
@@ -75,9 +77,9 @@ class AuthViewModel @Inject constructor(
                 if (response.isSuccessful) {
                     val authResponse = response.body()
                     if (authResponse != null) {
-                        // Save auth token
-                        saveAuthToken(authResponse.access_token)
-                        saveUserId(authResponse.user.id)
+                        // Save auth token securely
+                        sessionManager.saveAuthToken(authResponse.access_token)
+                        sessionManager.saveUserId(authResponse.user.id)
 
                         // Check if user needs onboarding (name is "New User" means new account)
                         val needsOnboarding = authResponse.user.name == "New User"
@@ -105,25 +107,24 @@ class AuthViewModel @Inject constructor(
 
     private fun formatPhoneNumber(phone: String): String {
         val cleaned = phone.replace(Regex("[^0-9]"), "")
-        return if (cleaned.startsWith("91")) "+$cleaned"
-        else if (cleaned.length == 10) "+91$cleaned"
-        else "+$cleaned"
+        return when {
+            cleaned.startsWith("91") && cleaned.length == 12 -> "+$cleaned"
+            cleaned.length == 10 -> "+91$cleaned"
+            else -> "+$cleaned"
+        }
     }
 
-    private fun saveAuthToken(token: String) {
-        prefs.edit().putString("auth_token", token).apply()
+    fun isValidPhoneNumber(): Boolean {
+        val cleaned = _phoneNumber.value.replace(Regex("[^0-9]"), "")
+        return cleaned.length == 10 || (cleaned.startsWith("91") && cleaned.length == 12)
     }
 
-    private fun saveUserId(userId: String) {
-        prefs.edit().putString("user_id", userId).apply()
-    }
-
-    fun getAuthToken(): String? = prefs.getString("auth_token", null)
-    fun getUserId(): String? = prefs.getString("user_id", null)
-    fun isLoggedIn(): Boolean = getAuthToken() != null
+    fun getAuthToken(): String? = sessionManager.getAuthToken()
+    fun getUserId(): String? = sessionManager.getUserId()
+    fun isLoggedIn(): Boolean = sessionManager.isLoggedIn()
 
     fun logout() {
-        prefs.edit().clear().apply()
+        sessionManager.logout()
         _authState.value = AuthState.Idle
         _phoneNumber.value = ""
         _otp.value = ""

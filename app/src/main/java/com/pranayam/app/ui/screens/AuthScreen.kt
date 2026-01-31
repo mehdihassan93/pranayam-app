@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.pranayam.app.BuildConfig
 import com.pranayam.app.ui.components.PrimaryButton
 import com.pranayam.app.ui.components.PranayamTextField
 import com.pranayam.app.ui.theme.*
@@ -103,14 +104,17 @@ fun AuthScreen(
                     isLoading = isLoading
                 )
 
-                Spacer(Modifier.height(Spacing.M))
+                // Only show test credentials in debug builds
+                if (BuildConfig.DEBUG) {
+                    Spacer(Modifier.height(Spacing.M))
 
-                Text(
-                    text = "Test: Use 9999999999 with OTP 123456",
-                    style = PranayamTypography.LabelSmall,
-                    color = PranayamColors.TextTertiaryLight,
-                    textAlign = TextAlign.Center
-                )
+                    Text(
+                        text = "Test: Use 9999999999 with OTP 123456",
+                        style = PranayamTypography.LabelSmall,
+                        color = PranayamColors.TextTertiaryLight,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
 

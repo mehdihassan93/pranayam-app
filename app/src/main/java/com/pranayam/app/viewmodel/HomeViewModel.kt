@@ -3,6 +3,7 @@ package com.pranayam.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pranayam.app.data.model.Profile
+import com.pranayam.app.di.UserSessionManager
 import com.pranayam.app.repository.PranayamRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: PranayamRepository
+    private val repository: PranayamRepository,
+    private val sessionManager: UserSessionManager
 ) : ViewModel() {
 
     private val _profiles = MutableStateFlow<List<Profile>>(emptyList())
@@ -35,17 +37,20 @@ class HomeViewModel @Inject constructor(
     private val _currentUserProfile = MutableStateFlow<Profile?>(null)
     val currentUserProfile: StateFlow<Profile?> = _currentUserProfile.asStateFlow()
 
+    private val userId: String
+        get() = sessionManager.getUserId() ?: ""
+
     init {
         loadProfiles()
-        // Mocking current user profile for celebration
+        // Current user profile will be fetched from backend when needed
         _currentUserProfile.value = Profile(
-            id = "me",
-            name = "Me",
-            age = 25,
+            id = userId,
+            name = "",
+            age = 0,
             photos = emptyList(),
-            profession = "Designer",
+            profession = "",
             distance = 0,
-            isVerified = true,
+            isVerified = false,
             hasVideo = false,
             prompts = emptyList()
         )
@@ -54,8 +59,7 @@ class HomeViewModel @Inject constructor(
     fun loadProfiles(lat: Double? = null, long: Double? = null) {
         viewModelScope.launch {
             _isLoading.value = true
-            // Using "me" as mock userId
-            repository.getDiscoveryProfiles("me", lat, long).collect { result ->
+            repository.getDiscoveryProfiles(userId, lat, long).collect { result ->
                 result.onSuccess {
                     _profiles.value = it
                     _error.value = null
@@ -70,7 +74,7 @@ class HomeViewModel @Inject constructor(
     fun like() {
         val currentProfile = _profiles.value.getOrNull(_currentIndex.value) ?: return
         viewModelScope.launch {
-            repository.swipeProfile("me", currentProfile.id, "LIKE").onSuccess { response ->
+            repository.swipeProfile(userId, currentProfile.id, "LIKE").onSuccess { response ->
                 if (response.isMatch) {
                     _matchEvent.emit(response)
                 }
@@ -83,7 +87,7 @@ class HomeViewModel @Inject constructor(
     fun pass() {
         val currentProfile = _profiles.value.getOrNull(_currentIndex.value) ?: return
         viewModelScope.launch {
-            repository.swipeProfile("me", currentProfile.id, "PASS")
+            repository.swipeProfile(userId, currentProfile.id, "PASS")
             _currentIndex.value++
         }
     }
