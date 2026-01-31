@@ -18,7 +18,7 @@ socketIo = "2.1.0"
 room = "2.6.1"
 coil = "2.6.0"
 playServicesLocation = "21.3.0"
-accompanist = "0.34.0"
+accompanist = "0.37.3"
 securityCrypto = "1.1.0-alpha06"
 
 [libraries]
