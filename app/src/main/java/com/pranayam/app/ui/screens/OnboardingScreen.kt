@@ -52,6 +52,7 @@ fun OnboardingScreen(
     val gender by viewModel.gender.collectAsState()
     val selectedInterests by viewModel.selectedInterests.collectAsState()
     val photos by viewModel.photos.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
     Scaffold(
         topBar = {
@@ -127,7 +128,8 @@ fun OnboardingScreen(
                         viewModel.nextStep()
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                isLoading = isLoading
             )
         }
     }

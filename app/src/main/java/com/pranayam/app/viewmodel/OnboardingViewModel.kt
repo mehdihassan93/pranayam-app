@@ -112,18 +112,17 @@ class OnboardingViewModel @Inject constructor(
                     gender = _gender.value,
                     interests = _selectedInterests.value.toList()
                 )
-                val response = apiService.updateProfile(updateRequest)
-                if (response.isSuccessful) {
-                    // Mark onboarding as complete
-                    prefs.edit().putBoolean("onboarding_complete", true).apply()
-                    onSuccess()
-                }
+                apiService.updateProfile(updateRequest)
+                // Mark onboarding as complete regardless of API response
+                // Profile can be updated later if needed
             } catch (e: Exception) {
-                // Continue anyway - the profile will be incomplete but they can edit later
-                prefs.edit().putBoolean("onboarding_complete", true).apply()
-                onSuccess()
+                // Log error but continue - profile will be incomplete but they can edit later
+                e.printStackTrace()
             } finally {
                 _isLoading.value = false
+                // Always mark onboarding complete and proceed
+                prefs.edit().putBoolean("onboarding_complete", true).apply()
+                onSuccess()
             }
         }
     }
