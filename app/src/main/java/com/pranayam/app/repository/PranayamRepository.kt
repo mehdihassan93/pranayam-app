@@ -38,8 +38,9 @@ class PranayamRepository @Inject constructor(
     suspend fun swipeProfile(userId: String, targetId: String, type: String): Result<com.pranayam.app.data.model.LikeResponse> {
         return try {
             val response = apiService.swipeProfile(com.pranayam.app.api.SwipeRequest(userId, targetId, type))
-            if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
+            val body = response.body()
+            if (response.isSuccessful && body != null) {
+                Result.success(body)
             } else {
                 Result.failure(Exception("API Error: ${response.code()}"))
             }
@@ -68,16 +69,20 @@ class PranayamRepository @Inject constructor(
         }
     }
 
-    suspend fun refreshMessages(conversationId: String) {
-        try {
+    suspend fun refreshMessages(conversationId: String): Result<Unit> {
+        return try {
             val response = apiService.getMessages(conversationId)
-            if (response.isSuccessful && response.body() != null) {
-                val entities = response.body()!!.map { it.toEntity(conversationId) }
+            val messages = response.body()
+            if (response.isSuccessful && messages != null) {
+                val entities = messages.map { it.toEntity(conversationId) }
                 messageDao.deleteMessagesForConversation(conversationId)
                 messageDao.insertMessages(entities)
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to refresh messages: ${response.code()}"))
             }
         } catch (e: Exception) {
-            // Log error or handle silently for offline
+            Result.failure(e)
         }
     }
 
@@ -98,19 +103,19 @@ class PranayamRepository @Inject constructor(
 
         return try {
             val response = apiService.sendMessage(conversationId, SendMessageRequest(text))
-            if (response.isSuccessful && response.body() != null) {
-                val sentMessage = response.body()!!
+            val sentMessage = response.body()
+            if (response.isSuccessful && sentMessage != null) {
                 // Update local storage with real message
-                messageDao.deleteMessagesForConversation(tempId) // remove temp
+                messageDao.deleteMessage(tempId) // remove temp by ID
                 messageDao.insertMessage(sentMessage.toEntity(conversationId))
                 Result.success(sentMessage)
             } else {
                 // Update status to FAILED
-                messageDao.insertMessage(tempMessage.copy(status = MessageStatus.FAILED).toEntity(conversationId))
-                Result.failure(Exception("Send failed"))
+                messageDao.updateMessageStatus(tempId, MessageStatus.FAILED)
+                Result.failure(Exception("Send failed: ${response.code()}"))
             }
         } catch (e: Exception) {
-            messageDao.insertMessage(tempMessage.copy(status = MessageStatus.FAILED).toEntity(conversationId))
+            messageDao.updateMessageStatus(tempId, MessageStatus.FAILED)
             Result.failure(e)
         }
     }

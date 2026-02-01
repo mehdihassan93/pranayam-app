@@ -3,6 +3,7 @@ package com.pranayam.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pranayam.app.data.model.Message
+import com.pranayam.app.di.UserSessionManager
 import com.pranayam.app.repository.PranayamRepository
 import com.pranayam.app.util.VoiceRecorder
 import com.pranayam.app.api.SocketService
@@ -23,8 +24,12 @@ import javax.inject.Inject
 class ChatViewModel @Inject constructor(
     private val repository: PranayamRepository,
     private val voiceRecorder: VoiceRecorder,
-    private val socketService: SocketService
+    private val socketService: SocketService,
+    private val sessionManager: UserSessionManager
 ) : ViewModel() {
+
+    private val userId: String
+        get() = sessionManager.getUserId() ?: ""
 
     // --- State Observables ---
 
@@ -72,9 +77,10 @@ class ChatViewModel @Inject constructor(
             }
         }
         
-        // Ensure the socket is connected using the current user's session
-        // Note: In production, "me" would be the actual authenticated UID
-        socketService.connect("me") 
+        // Connect socket with authenticated user ID
+        if (userId.isNotEmpty()) {
+            socketService.connect(userId)
+        } 
     }
 
     /**
@@ -83,8 +89,10 @@ class ChatViewModel @Inject constructor(
      */
     fun onMessageChange(text: String, conversationId: String) {
         _messageText.value = text
-        // Throttle/Send typing indicator to partner via Socket
-        socketService.sendTyping(conversationId, "me", text.isNotEmpty())
+        // Send typing indicator to partner via Socket
+        if (userId.isNotEmpty()) {
+            socketService.sendTyping(conversationId, userId, text.isNotEmpty())
+        }
     }
 
     /**
@@ -103,23 +111,23 @@ class ChatViewModel @Inject constructor(
     /**
      * Finalizes and sends the currently typed message.
      */
-    fun sendMessage(conversationId: String) {
+    fun sendMessage(conversationId: String, recipientId: String = "") {
         val text = _messageText.value.trim()
-        if (text.isEmpty()) return
+        if (text.isEmpty() || userId.isEmpty()) return
 
-        // Construct the JSON payload for the industry-standard socket protocol
+        // Construct the JSON payload for socket protocol
         val data = JSONObject().apply {
             put("conversationId", conversationId)
-            put("senderId", "me")
+            put("senderId", userId)
             put("content", text)
-            put("recipientId", "other_user_id") // Placeholder for the actual target UID
+            put("recipientId", recipientId)
         }
-        
+
         socketService.sendMessage(data)
-        
+
         // Reset local state
         _messageText.value = ""
-        socketService.sendTyping(conversationId, "me", false)
+        socketService.sendTyping(conversationId, userId, false)
     }
 
     /**
