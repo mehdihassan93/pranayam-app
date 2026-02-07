@@ -54,7 +54,9 @@ fun ChatScreen(
     onProfileClick: () -> Unit,
     onVoiceRecordStart: () -> Unit,
     onVoiceRecordStop: () -> Unit,
-    onVoiceRecordCancel: () -> Unit
+    onVoiceRecordCancel: () -> Unit,
+    onReportUser: () -> Unit = {},
+    onBlockUser: () -> Unit = {}
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -175,9 +177,7 @@ fun ChatScreen(
                     TextButton(
                         onClick = {
                             showMoreMenu = false
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Report feature coming soon")
-                            }
+                            onReportUser()
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -197,9 +197,7 @@ fun ChatScreen(
                     TextButton(
                         onClick = {
                             showMoreMenu = false
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Block feature coming soon")
-                            }
+                            onBlockUser()
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {

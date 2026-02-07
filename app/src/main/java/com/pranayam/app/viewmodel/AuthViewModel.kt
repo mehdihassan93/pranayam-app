@@ -129,4 +129,20 @@ class AuthViewModel @Inject constructor(
         _phoneNumber.value = ""
         _otp.value = ""
     }
+
+    fun deleteAccount(onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val response = apiService.deleteAccount()
+                if (response.isSuccessful) {
+                    logout()
+                    onResult(true)
+                } else {
+                    onResult(false)
+                }
+            } catch (e: Exception) {
+                onResult(false)
+            }
+        }
+    }
 }

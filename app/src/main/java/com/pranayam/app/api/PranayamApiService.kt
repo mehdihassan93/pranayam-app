@@ -49,6 +49,17 @@ interface PranayamApiService {
         @Path("id") conversationId: String,
         @Body messageRequest: SendMessageRequest
     ): Response<Message>
+
+    // Safety endpoints
+    @POST("safety/report")
+    suspend fun reportUser(@Body request: ReportUserRequest): Response<ApiMessage>
+
+    @POST("safety/block")
+    suspend fun blockUser(@Body request: BlockUserRequest): Response<ApiMessage>
+
+    // Account deletion
+    @DELETE("auth/account")
+    suspend fun deleteAccount(): Response<ApiMessage>
 }
 
 data class SendMessageRequest(
@@ -94,4 +105,19 @@ data class UpdateProfileRequest(
     val photoUrl: String? = null,
     val distancePreference: Int? = null,
     val genderPreference: List<String>? = null
+)
+
+// Safety DTOs
+data class ReportUserRequest(
+    val reportedUserId: String,
+    val reason: String,
+    val description: String = ""
+)
+
+data class BlockUserRequest(
+    val blockedUserId: String
+)
+
+data class ApiMessage(
+    val message: String
 )

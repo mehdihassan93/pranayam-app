@@ -235,4 +235,26 @@ class ChatViewModel @Inject constructor(
         recordingJob?.cancel()
         voiceRecorder.cancelRecording()
     }
+
+    /**
+     * Reports a user for inappropriate behavior.
+     */
+    fun reportUser(reportedUserId: String, reason: String, description: String = "", onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            repository.reportUser(reportedUserId, reason, description)
+                .onSuccess { onResult(true) }
+                .onFailure { onResult(false) }
+        }
+    }
+
+    /**
+     * Blocks a user and removes their conversation.
+     */
+    fun blockUser(blockedUserId: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            repository.blockUser(blockedUserId)
+                .onSuccess { onResult(true) }
+                .onFailure { onResult(false) }
+        }
+    }
 }

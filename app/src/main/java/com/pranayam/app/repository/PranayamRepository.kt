@@ -1,6 +1,8 @@
 package com.pranayam.app.repository
 
+import com.pranayam.app.api.BlockUserRequest
 import com.pranayam.app.api.PranayamApiService
+import com.pranayam.app.api.ReportUserRequest
 import com.pranayam.app.api.SendMessageRequest
 import com.pranayam.app.data.local.entity.MessageEntity
 import com.pranayam.app.data.local.dao.MessageDao
@@ -125,6 +127,46 @@ class PranayamRepository @Inject constructor(
             }
         } catch (e: Exception) {
             messageDao.updateMessageStatus(tempId, MessageStatus.FAILED)
+            Result.failure(e)
+        }
+    }
+
+    // Safety
+    suspend fun reportUser(reportedUserId: String, reason: String, description: String = ""): Result<String> {
+        return try {
+            val response = apiService.reportUser(ReportUserRequest(reportedUserId, reason, description))
+            if (response.isSuccessful) {
+                Result.success(response.body()?.message ?: "Report submitted")
+            } else {
+                Result.failure(Exception("Failed to report: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun blockUser(blockedUserId: String): Result<String> {
+        return try {
+            val response = apiService.blockUser(BlockUserRequest(blockedUserId))
+            if (response.isSuccessful) {
+                Result.success(response.body()?.message ?: "User blocked")
+            } else {
+                Result.failure(Exception("Failed to block: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteAccount(): Result<String> {
+        return try {
+            val response = apiService.deleteAccount()
+            if (response.isSuccessful) {
+                Result.success(response.body()?.message ?: "Account deleted")
+            } else {
+                Result.failure(Exception("Failed to delete account: ${response.code()}"))
+            }
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }

@@ -142,10 +142,10 @@ fun PranayamNavGraph(
                     }
                 },
                 onDeleteAccount = {
-                    // In a real app, call API to delete account first
-                    authViewModel.logout()
-                    navController.navigate(Screen.Auth.route) {
-                        popUpTo(0) { inclusive = true }
+                    authViewModel.deleteAccount { success ->
+                        navController.navigate(Screen.Auth.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
                 },
                 onNavigateToPermissions = {
@@ -220,7 +220,14 @@ fun PranayamNavGraph(
                 onProfileClick = { },
                 onVoiceRecordStart = viewModel::startRecording,
                 onVoiceRecordStop = { viewModel.stopRecording(conversationId) },
-                onVoiceRecordCancel = viewModel::cancelRecording
+                onVoiceRecordCancel = viewModel::cancelRecording,
+                onReportUser = {
+                    // TODO: show reason picker dialog; for now report as OTHER
+                    viewModel.reportUser(conversationId, "OTHER") { navController.popBackStack() }
+                },
+                onBlockUser = {
+                    viewModel.blockUser(conversationId) { navController.popBackStack() }
+                }
             )
         }
     }
@@ -361,9 +368,10 @@ fun MainContainer(
                             }
                         },
                         onDeleteAccount = {
-                            authViewModel.logout()
-                            parentNavController.navigate(Screen.Auth.route) {
-                                popUpTo(0) { inclusive = true }
+                            authViewModel.deleteAccount { success ->
+                                parentNavController.navigate(Screen.Auth.route) {
+                                    popUpTo(0) { inclusive = true }
+                                }
                             }
                         },
                         onNavigateToPermissions = {
