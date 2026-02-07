@@ -1,8 +1,6 @@
 package com.pranayam.app.api
 
 import com.pranayam.app.data.model.Profile
-import com.pranayam.app.data.model.Conversation
-import com.pranayam.app.data.model.Message
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -35,20 +33,20 @@ interface PranayamApiService {
     suspend fun swipeProfile(@Body swipeRequest: SwipeRequest): Response<com.pranayam.app.data.model.LikeResponse>
 
     @GET("chat/conversations")
-    suspend fun getConversations(): Response<List<Conversation>>
+    suspend fun getConversations(): Response<List<ApiConversationDto>>
 
     @GET("chat/messages/{id}")
     suspend fun getMessages(
         @Path("id") conversationId: String,
         @Query("limit") limit: Int = 20,
         @Query("before") timestamp: String? = null
-    ): Response<List<Message>>
+    ): Response<List<ApiMessageDto>>
 
     @POST("chat/messages/{id}")
     suspend fun sendMessage(
         @Path("id") conversationId: String,
         @Body messageRequest: SendMessageRequest
-    ): Response<Message>
+    ): Response<ApiMessageDto>
 
     // Safety endpoints
     @POST("safety/report")
@@ -63,7 +61,7 @@ interface PranayamApiService {
 }
 
 data class SendMessageRequest(
-    val text: String,
+    val content: String,
     val type: String = "TEXT"
 )
 

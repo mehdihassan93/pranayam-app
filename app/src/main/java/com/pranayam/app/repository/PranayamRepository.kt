@@ -1,5 +1,7 @@
 package com.pranayam.app.repository
 
+import com.pranayam.app.api.ApiMessageDto
+import com.pranayam.app.api.ApiConversationDto
 import com.pranayam.app.api.BlockUserRequest
 import com.pranayam.app.api.PranayamApiService
 import com.pranayam.app.api.ReportUserRequest
@@ -10,7 +12,9 @@ import com.pranayam.app.data.model.ContentType
 import com.pranayam.app.data.model.Conversation
 import com.pranayam.app.data.model.Message
 import com.pranayam.app.data.model.MessageStatus
+import com.pranayam.app.data.model.MessageType
 import com.pranayam.app.data.model.Profile
+import com.pranayam.app.di.UserSessionManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -20,8 +24,11 @@ import javax.inject.Singleton
 @Singleton
 class PranayamRepository @Inject constructor(
     private val apiService: PranayamApiService,
-    private val messageDao: MessageDao
+    private val messageDao: MessageDao,
+    private val sessionManager: UserSessionManager
 ) {
+    private val userId: String
+        get() = sessionManager.getUserId() ?: ""
 
     // Discovery
     fun getDiscoveryProfiles(lat: Double?, long: Double?, isGuest: Boolean = false): Flow<Result<List<Profile>>> = flow {
@@ -59,7 +66,9 @@ class PranayamRepository @Inject constructor(
         try {
             val response = apiService.getConversations()
             if (response.isSuccessful) {
-                emit(Result.success(response.body() ?: emptyList()))
+                val dtos = response.body() ?: emptyList()
+                val conversations = dtos.map { it.toDomain(userId) }
+                emit(Result.success(conversations))
             } else {
                 emit(Result.failure(Exception("API Error: ${response.code()}")))
             }
@@ -83,8 +92,9 @@ class PranayamRepository @Inject constructor(
     suspend fun refreshMessages(conversationId: String): Result<Unit> {
         return try {
             val response = apiService.getMessages(conversationId)
-            val messages = response.body()
-            if (response.isSuccessful && messages != null) {
+            val dtos = response.body()
+            if (response.isSuccessful && dtos != null) {
+                val messages = dtos.map { it.toDomain(userId) }
                 val entities = messages.map { it.toEntity(conversationId) }
                 messageDao.deleteMessagesForConversation(conversationId)
                 messageDao.insertMessages(entities)
@@ -108,14 +118,15 @@ class PranayamRepository @Inject constructor(
             contentType = ContentType.TEXT,
             status = MessageStatus.SENDING
         )
-        
+
         // Save locally first for instant feedback
         messageDao.insertMessage(tempMessage.toEntity(conversationId))
 
         return try {
-            val response = apiService.sendMessage(conversationId, SendMessageRequest(text))
-            val sentMessage = response.body()
-            if (response.isSuccessful && sentMessage != null) {
+            val response = apiService.sendMessage(conversationId, SendMessageRequest(content = text))
+            val dto = response.body()
+            if (response.isSuccessful && dto != null) {
+                val sentMessage = dto.toDomain(userId)
                 // Update local storage with real message
                 messageDao.deleteMessage(tempId) // remove temp by ID
                 messageDao.insertMessage(sentMessage.toEntity(conversationId))
@@ -198,4 +209,45 @@ class PranayamRepository @Inject constructor(
         duration = duration,
         type = type
     )
+
+    // --- API DTO → Domain mappers ---
+
+    private fun ApiMessageDto.toDomain(currentUserId: String) = Message(
+        id = id,
+        text = content ?: "",
+        timestamp = createdAt ?: "",
+        isSent = senderId == currentUserId,
+        contentType = when (type?.uppercase()) {
+            "IMAGE" -> ContentType.IMAGE
+            "VOICE" -> ContentType.VOICE
+            "VIDEO" -> ContentType.VIDEO
+            else -> ContentType.TEXT
+        },
+        status = MessageStatus.DELIVERED,
+        imageUrl = if (type?.uppercase() == "IMAGE") mediaUrl else null,
+        voiceUrl = if (type?.uppercase() == "VOICE") mediaUrl else null,
+        duration = duration?.toString(),
+        type = when (type?.uppercase()) {
+            "SYSTEM" -> MessageType.SYSTEM
+            else -> MessageType.REGULAR
+        }
+    )
+
+    private fun ApiConversationDto.toDomain(currentUserId: String): Conversation {
+        // Find the OTHER participant (not the current user)
+        val otherParticipant = participants.firstOrNull { it.id != currentUserId }
+            ?: participants.firstOrNull()
+
+        return Conversation(
+            id = id,
+            name = otherParticipant?.name ?: "Unknown",
+            age = 0, // Age not included in populated participant data
+            photoUrl = otherParticipant?.photoUrl ?: "",
+            lastMessage = lastMessage?.content ?: "",
+            timestamp = updatedAt ?: "",
+            unreadCount = unreadCounts?.get(currentUserId) ?: 0,
+            isOnline = otherParticipant?.isOnline ?: false,
+            isVerified = false // Not included in populated participant data
+        )
+    }
 }

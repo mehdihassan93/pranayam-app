@@ -18,7 +18,16 @@ data class Profile(
     val height: Int? = null,
     val education: String? = null,
     val languages: List<String> = emptyList(),
-    val isGuestProfile: Boolean = false
+    val isGuestProfile: Boolean = false,
+    val gender: String? = null,
+    val company: String? = null,
+    val college: String? = null,
+    val interests: List<String> = emptyList(),
+    val lookingFor: String? = null,
+    val drinking: String? = null,
+    val smoking: String? = null,
+    val workout: String? = null,
+    val religion: String? = null
 )
 
 data class Prompt(
