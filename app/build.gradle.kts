@@ -106,6 +106,9 @@ dependencies {
     // Security - Encrypted SharedPreferences
     implementation(libs.androidx.security.crypto)
 
+    // DataStore
+    implementation(libs.androidx.datastore.preferences)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")

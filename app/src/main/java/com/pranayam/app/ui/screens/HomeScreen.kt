@@ -3,6 +3,7 @@ package com.pranayam.app.ui.screens
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -17,17 +18,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.pranayam.app.data.model.Profile
 import com.pranayam.app.ui.components.CircularIconButton
 import com.pranayam.app.ui.components.ProfileCard
 import com.pranayam.app.ui.theme.*
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     profiles: List<Profile>,
     currentIndex: Int,
+    isGuestMode: Boolean = false,
     onProfileClick: (String) -> Unit,
     onLike: () -> Unit,
     onPass: () -> Unit,
@@ -104,6 +111,7 @@ fun HomeScreen(
                     ProfileCard(
                         profile = nextProfile,
                         onCardClick = { },
+                        isGuestMode = isGuestMode,
                         modifier = Modifier
                             .padding(Spacing.M)
                             .scale(0.95f)
@@ -111,12 +119,35 @@ fun HomeScreen(
                     )
                 }
 
-                // Foreground card (active profile)
+                // Foreground card with swipe gestures
                 val currentProfile = profiles[currentIndex]
+                var offsetX by remember(currentIndex) { mutableFloatStateOf(0f) }
+                val rotation = (offsetX / 40f).coerceIn(-15f, 15f)
+                val swipeThreshold = 300f
+
                 ProfileCard(
                     profile = currentProfile,
                     onCardClick = { onProfileClick(currentProfile.id) },
-                    modifier = Modifier.padding(Spacing.M)
+                    isGuestMode = isGuestMode,
+                    modifier = Modifier
+                        .padding(Spacing.M)
+                        .offset { IntOffset(offsetX.roundToInt(), 0) }
+                        .graphicsLayer { rotationZ = rotation }
+                        .pointerInput(currentIndex) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    when {
+                                        offsetX > swipeThreshold -> onLike()
+                                        offsetX < -swipeThreshold -> onPass()
+                                    }
+                                    offsetX = 0f
+                                },
+                                onDragCancel = { offsetX = 0f }
+                            ) { change, dragAmount ->
+                                change.consume()
+                                offsetX += dragAmount
+                            }
+                        }
                 )
             } else {
                 EmptyProfilesState()

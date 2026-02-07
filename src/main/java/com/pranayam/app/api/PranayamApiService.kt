@@ -16,6 +16,12 @@ interface PranayamApiService {
         @Query("distance") maxDistance: Int = 50
     ): Response<List<Profile>>
 
+    @GET("discovery/recommendations")
+    suspend fun getGuestProfiles(
+        @Query("lat") latitude: Double?,
+        @Query("long") longitude: Double?
+    ): Response<List<Profile>>
+
     @POST("discovery/swipe")
     suspend fun swipeProfile(@Body swipeRequest: SwipeRequest): Response<com.pranayam.app.model.LikeResponse>
 

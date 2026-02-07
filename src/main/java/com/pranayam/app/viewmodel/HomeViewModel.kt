@@ -3,18 +3,21 @@ package com.pranayam.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pranayam.app.data.model.Profile
+import com.pranayam.app.di.UserSessionManager
 import com.pranayam.app.repository.PranayamRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val repository: PranayamRepository
+    private val repository: PranayamRepository,
+    private val sessionManager: UserSessionManager
 ) : ViewModel() {
 
     private val _profiles = MutableStateFlow<List<Profile>>(emptyList())
@@ -29,23 +32,47 @@ class HomeViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    private val _matchEvent = kotlinx.coroutines.flow.MutableSharedFlow<com.pranayam.app.data.model.LikeResponse>()
+    private val _matchEvent = MutableSharedFlow<com.pranayam.app.data.model.LikeResponse>()
     val matchEvent = _matchEvent.asSharedFlow()
 
     private val _currentUserProfile = MutableStateFlow<Profile?>(null)
     val currentUserProfile: StateFlow<Profile?> = _currentUserProfile.asStateFlow()
 
+    // Guest mode state
+    private val _isGuestMode = MutableStateFlow(sessionManager.isGuest())
+    val isGuestMode: StateFlow<Boolean> = _isGuestMode.asStateFlow()
+
+    private val _guestSwipeCount = MutableStateFlow(0)
+    val guestSwipeCount: StateFlow<Int> = _guestSwipeCount.asStateFlow()
+
+    private val _showLoginPrompt = MutableSharedFlow<Unit>()
+    val showLoginPrompt = _showLoginPrompt.asSharedFlow()
+
+    companion object {
+        private const val GUEST_SWIPE_LIMIT = 3
+    }
+
     init {
         loadProfiles()
         // Mocking current user profile for celebration
-        _currentUserProfile.value = Profile("me", "Me", 25, "Designer", emptyList(), "", "Kochi", 0)
+        _currentUserProfile.value = Profile(
+            id = "me",
+            name = "Me",
+            age = 25,
+            photos = emptyList(),
+            profession = "Designer",
+            city = "Kochi",
+            distance = 0
+        )
     }
 
     fun loadProfiles(lat: Double? = null, long: Double? = null) {
         viewModelScope.launch {
             _isLoading.value = true
-            // Using "me" as mock userId
-            repository.getDiscoveryProfiles("me", lat, long).collect { result ->
+            _isGuestMode.value = sessionManager.isGuest()
+
+            val userId = sessionManager.getUserId() ?: "me"
+            repository.getDiscoveryProfiles(userId, lat, long, _isGuestMode.value).collect { result ->
                 result.onSuccess {
                     _profiles.value = it
                     _error.value = null
@@ -57,10 +84,29 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private fun handleGuestSwipe() {
+        _guestSwipeCount.value++
+        _currentIndex.value++
+
+        // Check if guest has reached swipe limit
+        if (_guestSwipeCount.value >= GUEST_SWIPE_LIMIT) {
+            viewModelScope.launch {
+                _showLoginPrompt.emit(Unit)
+            }
+        }
+    }
+
     fun like() {
         val currentProfile = _profiles.value.getOrNull(_currentIndex.value) ?: return
+
+        // Guests can't actually save swipes - just show UI and track count
+        if (_isGuestMode.value) {
+            handleGuestSwipe()
+            return
+        }
+
         viewModelScope.launch {
-            repository.swipeProfile("me", currentProfile.id, "LIKE").onSuccess { response ->
+            repository.swipeProfile(sessionManager.getUserId() ?: "me", currentProfile.id, "LIKE").onSuccess { response ->
                 if (response.isMatch) {
                     _matchEvent.emit(response)
                 }
@@ -72,8 +118,15 @@ class HomeViewModel @Inject constructor(
 
     fun pass() {
         val currentProfile = _profiles.value.getOrNull(_currentIndex.value) ?: return
+
+        // Guests can't actually save swipes - just show UI and track count
+        if (_isGuestMode.value) {
+            handleGuestSwipe()
+            return
+        }
+
         viewModelScope.launch {
-            repository.swipeProfile("me", currentProfile.id, "PASS")
+            repository.swipeProfile(sessionManager.getUserId() ?: "me", currentProfile.id, "PASS")
             _currentIndex.value++
         }
     }
@@ -81,6 +134,22 @@ class HomeViewModel @Inject constructor(
     fun undo() {
         if (_currentIndex.value > 0) {
             _currentIndex.value--
+            // Decrement guest swipe count if in guest mode
+            if (_isGuestMode.value && _guestSwipeCount.value > 0) {
+                _guestSwipeCount.value--
+            }
+        }
+    }
+
+    fun resetGuestSwipeCount() {
+        _guestSwipeCount.value = 0
+    }
+
+    fun refreshAuthState() {
+        _isGuestMode.value = sessionManager.isGuest()
+        if (!_isGuestMode.value) {
+            // User just logged in, reload profiles
+            loadProfiles()
         }
     }
 }

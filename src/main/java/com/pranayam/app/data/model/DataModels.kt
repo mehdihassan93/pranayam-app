@@ -3,18 +3,20 @@ package com.pranayam.app.data.model
 data class Profile(
     val id: String,
     val name: String,
-    val age: Int,
+    val age: Int?,
     val photos: List<String>,
     val videoUrl: String? = null,
     val profession: String,
-    val distance: Int,
-    val isVerified: Boolean,
-    val hasVideo: Boolean,
-    val prompts: List<Prompt>,
+    val city: String? = null,
+    val distance: Int?,
+    val isVerified: Boolean = false,
+    val hasVideo: Boolean = false,
+    val prompts: List<Prompt> = emptyList(),
     val bio: String? = null,
     val height: Int? = null,
     val education: String? = null,
-    val languages: List<String> = emptyList()
+    val languages: List<String> = emptyList(),
+    val isGuestProfile: Boolean = false
 )
 
 data class Prompt(

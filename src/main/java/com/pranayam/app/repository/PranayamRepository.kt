@@ -2,15 +2,18 @@ package com.pranayam.app.repository
 
 import com.pranayam.app.api.PranayamApiService
 import com.pranayam.app.api.SendMessageRequest
-import com.pranayam.app.data.model.Profile
+import com.pranayam.app.data.local.dao.MessageDao
+import com.pranayam.app.data.local.entity.MessageEntity
+import com.pranayam.app.data.model.ContentType
 import com.pranayam.app.data.model.Conversation
 import com.pranayam.app.data.model.Message
+import com.pranayam.app.data.model.MessageStatus
+import com.pranayam.app.data.model.Profile
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
-
-import kotlinx.coroutines.flow.map
 
 @Singleton
 class PranayamRepository @Inject constructor(
@@ -19,9 +22,14 @@ class PranayamRepository @Inject constructor(
 ) {
 
     // Discovery
-    fun getDiscoveryProfiles(userId: String, lat: Double?, long: Double?): Flow<Result<List<Profile>>> = flow {
+    fun getDiscoveryProfiles(userId: String, lat: Double?, long: Double?, isGuest: Boolean = false): Flow<Result<List<Profile>>> = flow {
         try {
-            val response = apiService.getDiscoveryProfiles(userId, lat, long)
+            val response = if (isGuest) {
+                // Guest mode - fetch without auth
+                apiService.getGuestProfiles(lat, long)
+            } else {
+                apiService.getDiscoveryProfiles(userId, lat, long)
+            }
             if (response.isSuccessful) {
                 emit(Result.success(response.body() ?: emptyList()))
             } else {

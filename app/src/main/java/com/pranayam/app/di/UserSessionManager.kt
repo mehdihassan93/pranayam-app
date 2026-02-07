@@ -5,6 +5,9 @@ import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,8 +29,12 @@ class UserSessionManager @Inject constructor(
         )
     }
 
+    private val _isAuthenticated = MutableStateFlow(isLoggedIn())
+    val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
+
     fun saveAuthToken(token: String) {
         prefs.edit().putString(KEY_AUTH_TOKEN, token).apply()
+        _isAuthenticated.value = true
     }
 
     fun saveUserId(userId: String) {
@@ -46,8 +53,11 @@ class UserSessionManager @Inject constructor(
 
     fun isLoggedIn(): Boolean = getAuthToken() != null
 
+    fun isGuest(): Boolean = !isLoggedIn()
+
     fun logout() {
         prefs.edit().clear().apply()
+        _isAuthenticated.value = false
     }
 
     companion object {

@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalUriHandler
 import com.pranayam.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -22,18 +23,22 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit,
     onDeleteAccount: () -> Unit,
-    onNavigateToPermissions: () -> Unit
+    onNavigateToPermissions: () -> Unit,
+    onEditProfile: () -> Unit = {},
+    onBlockedUsers: () -> Unit = {}
 ) {
+    val uriHandler = LocalUriHandler.current
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Preference states
-    var notificationsEnabled by remember { mutableStateOf(true) }
-    var matchNotifications by remember { mutableStateOf(true) }
-    var messageNotifications by remember { mutableStateOf(true) }
-    var showOnlineStatus by remember { mutableStateOf(true) }
-    var showDistance by remember { mutableStateOf(true) }
-    var darkMode by remember { mutableStateOf(false) }
+    // Persisted preference states from ViewModel
+    val settingsViewModel: com.pranayam.app.viewmodel.SettingsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val notificationsEnabled by settingsViewModel.notificationsEnabled.collectAsState()
+    val matchNotifications by settingsViewModel.matchNotifications.collectAsState()
+    val messageNotifications by settingsViewModel.messageNotifications.collectAsState()
+    val showOnlineStatus by settingsViewModel.showOnlineStatus.collectAsState()
+    val showDistance by settingsViewModel.showDistance.collectAsState()
+    val darkMode by settingsViewModel.darkMode.collectAsState()
 
     Scaffold(
         topBar = {
@@ -61,7 +66,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Person,
                     title = "Edit Profile",
                     subtitle = "Update your photos and info",
-                    onClick = { }
+                    onClick = onEditProfile
                 )
             }
             item {
@@ -83,7 +88,7 @@ fun SettingsScreen(
                     title = "Push Notifications",
                     subtitle = "Enable all notifications",
                     checked = notificationsEnabled,
-                    onCheckedChange = { notificationsEnabled = it }
+                    onCheckedChange = settingsViewModel::setNotificationsEnabled
                 )
             }
             item {
@@ -92,7 +97,7 @@ fun SettingsScreen(
                     title = "New Matches",
                     subtitle = "Get notified when you match",
                     checked = matchNotifications,
-                    onCheckedChange = { matchNotifications = it },
+                    onCheckedChange = settingsViewModel::setMatchNotifications,
                     enabled = notificationsEnabled
                 )
             }
@@ -102,7 +107,7 @@ fun SettingsScreen(
                     title = "Messages",
                     subtitle = "Get notified for new messages",
                     checked = messageNotifications,
-                    onCheckedChange = { messageNotifications = it },
+                    onCheckedChange = settingsViewModel::setMessageNotifications,
                     enabled = notificationsEnabled
                 )
             }
@@ -117,7 +122,7 @@ fun SettingsScreen(
                     title = "Show Online Status",
                     subtitle = "Let others see when you're active",
                     checked = showOnlineStatus,
-                    onCheckedChange = { showOnlineStatus = it }
+                    onCheckedChange = settingsViewModel::setShowOnlineStatus
                 )
             }
             item {
@@ -126,7 +131,7 @@ fun SettingsScreen(
                     title = "Show Distance",
                     subtitle = "Display your distance to others",
                     checked = showDistance,
-                    onCheckedChange = { showDistance = it }
+                    onCheckedChange = settingsViewModel::setShowDistance
                 )
             }
             item {
@@ -134,7 +139,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Block,
                     title = "Blocked Users",
                     subtitle = "Manage blocked profiles",
-                    onClick = { }
+                    onClick = onBlockedUsers
                 )
             }
 
@@ -148,7 +153,7 @@ fun SettingsScreen(
                     title = "Dark Mode",
                     subtitle = "Use dark theme",
                     checked = darkMode,
-                    onCheckedChange = { darkMode = it }
+                    onCheckedChange = settingsViewModel::setDarkMode
                 )
             }
             item {
@@ -169,7 +174,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Help,
                     title = "Help Center",
                     subtitle = "FAQs and support",
-                    onClick = { }
+                    onClick = { uriHandler.openUri("https://pranayam.app/help") }
                 )
             }
             item {
@@ -177,21 +182,21 @@ fun SettingsScreen(
                     icon = Icons.Default.Feedback,
                     title = "Send Feedback",
                     subtitle = "Help us improve",
-                    onClick = { }
+                    onClick = { uriHandler.openUri("mailto:support@pranayam.app?subject=Feedback") }
                 )
             }
             item {
                 SettingsItem(
                     icon = Icons.Default.Policy,
                     title = "Privacy Policy",
-                    onClick = { }
+                    onClick = { uriHandler.openUri("https://pranayam.app/privacy") }
                 )
             }
             item {
                 SettingsItem(
                     icon = Icons.Default.Description,
                     title = "Terms of Service",
-                    onClick = { }
+                    onClick = { uriHandler.openUri("https://pranayam.app/terms") }
                 )
             }
 

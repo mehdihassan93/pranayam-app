@@ -27,6 +27,7 @@ import com.pranayam.app.ui.theme.*
 fun SharedTransitionScope.HomeScreen(
     profiles: List<Profile>,
     currentIndex: Int,
+    isGuestMode: Boolean,
     onProfileClick: (String) -> Unit,
     onLike: () -> Unit,
     onPass: () -> Unit,
@@ -94,6 +95,7 @@ fun SharedTransitionScope.HomeScreen(
                         profile = nextProfile,
                         onCardClick = { },
                         animatedVisibilityScope = animatedVisibilityScope,
+                        isGuestMode = isGuestMode,
                         modifier = Modifier
                             .padding(Spacing.M)
                             .scale(0.95f)
@@ -108,6 +110,7 @@ fun SharedTransitionScope.HomeScreen(
                     onCardClick = { onProfileClick(currentProfile.id) },
                     animatedVisibilityScope = animatedVisibilityScope,
                     sharedElementKey = "photo-${currentProfile.id}",
+                    isGuestMode = isGuestMode,
                     modifier = Modifier.padding(Spacing.M)
                 )
             } else {

@@ -3,9 +3,9 @@ package com.pranayam.app.ui.navigation
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
     object Auth : Screen("auth")
-    object MatchCelebration : Screen("match_celebration/{userPhoto}/{matchPhoto}/{matchName}") {
-        fun createRoute(userPhoto: String, matchPhoto: String, matchName: String) =
-            "match_celebration/$userPhoto/$matchPhoto/$matchName"
+    object MatchCelebration : Screen("match_celebration/{userPhoto}/{matchPhoto}/{matchName}/{conversationId}") {
+        fun createRoute(userPhoto: String, matchPhoto: String, matchName: String, conversationId: String) =
+            "match_celebration/$userPhoto/$matchPhoto/$matchName/$conversationId"
     }
     object Onboarding : Screen("onboarding")
     object Permissions : Screen("permissions")

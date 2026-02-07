@@ -117,6 +117,24 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun superLike() {
+        val currentProfile = _profiles.value.getOrNull(_currentIndex.value) ?: return
+
+        if (_isGuestMode.value) {
+            handleGuestSwipe()
+            return
+        }
+
+        viewModelScope.launch {
+            repository.swipeProfile(currentProfile.id, "SUPERLIKE").onSuccess { response ->
+                if (response.isMatch) {
+                    _matchEvent.emit(response)
+                }
+            }
+            _currentIndex.value++
+        }
+    }
+
     fun pass() {
         val currentProfile = _profiles.value.getOrNull(_currentIndex.value) ?: return
 

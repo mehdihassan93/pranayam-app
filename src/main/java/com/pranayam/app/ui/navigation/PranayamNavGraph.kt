@@ -1,8 +1,12 @@
 package com.pranayam.app.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -14,15 +18,20 @@ import com.pranayam.app.ui.components.NavigationTab
 
 @OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 @Composable
-fun PranayamNavGraph(navController: NavHostController) {
+fun PranayamNavGraph(
+    navController: NavHostController,
+    sessionManager: com.pranayam.app.di.UserSessionManager
+) {
     androidx.compose.animation.SharedTransitionLayout {
         NavHost(
             navController = navController,
             startDestination = Screen.Splash.route
         ) {
             composable(Screen.Splash.route) {
-                SplashScreen(onSplashFinished = {
-                    navController.navigate(Screen.Auth.route) {
+                SplashScreen(onComplete = {
+                    // Go directly to Main - guests will see blurred profiles
+                    // and get prompted to login after 3 swipes
+                    navController.navigate(Screen.Main.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 })
@@ -197,18 +206,22 @@ fun MainContainer(
 ) {
     val bottomNavController = rememberNavController()
     val viewModel: HomeViewModel = hiltViewModel()
-    
+
     val profiles by viewModel.profiles.collectAsState()
     val currentIndex by viewModel.currentIndex.collectAsState()
     val currentUser by viewModel.currentUserProfile.collectAsState()
+    val isGuestMode by viewModel.isGuestMode.collectAsState()
+
+    // State for login prompt dialog
+    var showLoginDialog by remember { mutableStateOf(false) }
 
     // Observe Match Celebrations
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    LaunchedEffect(Unit) {
         viewModel.matchEvent.collect { match ->
             val encodedUserPhoto = java.net.URLEncoder.encode(currentUser?.photos?.firstOrNull() ?: "", "UTF-8")
             val encodedMatchPhoto = java.net.URLEncoder.encode(profiles.getOrNull(currentIndex - 1)?.photos?.firstOrNull() ?: "", "UTF-8")
             val matchName = profiles.getOrNull(currentIndex - 1)?.name ?: "Someone"
-            
+
             parentNavController.navigate(
                 Screen.MatchCelebration.createRoute(
                     encodedUserPhoto,
@@ -217,6 +230,29 @@ fun MainContainer(
                 )
             )
         }
+    }
+
+    // Observe login prompt event for guest users
+    LaunchedEffect(Unit) {
+        viewModel.showLoginPrompt.collect {
+            showLoginDialog = true
+        }
+    }
+
+    // Login prompt dialog
+    if (showLoginDialog) {
+        com.pranayam.app.ui.components.LoginPromptDialog(
+            onLoginClick = {
+                showLoginDialog = false
+                parentNavController.navigate(Screen.Auth.route) {
+                    popUpTo(Screen.Main.route) { inclusive = true }
+                }
+            },
+            onDismiss = {
+                showLoginDialog = false
+                viewModel.resetGuestSwipeCount()
+            }
+        )
     }
 
     androidx.compose.material3.Scaffold(
@@ -257,6 +293,7 @@ fun MainContainer(
                         HomeScreen(
                             profiles = profiles,
                             currentIndex = currentIndex,
+                            isGuestMode = isGuestMode,
                             onProfileClick = { parentNavController.navigate(Screen.ProfileDetail.createRoute(it)) },
                             onLike = viewModel::like,
                             onPass = viewModel::pass,

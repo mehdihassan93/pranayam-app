@@ -76,12 +76,14 @@ fun PranayamNavGraph(
             arguments = listOf(
                 navArgument("userPhoto") { type = NavType.StringType },
                 navArgument("matchPhoto") { type = NavType.StringType },
-                navArgument("matchName") { type = NavType.StringType }
+                navArgument("matchName") { type = NavType.StringType },
+                navArgument("conversationId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
             val userPhoto = backStackEntry.arguments?.getString("userPhoto") ?: ""
             val matchPhoto = backStackEntry.arguments?.getString("matchPhoto") ?: ""
             val matchName = backStackEntry.arguments?.getString("matchName") ?: ""
+            val conversationId = backStackEntry.arguments?.getString("conversationId") ?: ""
 
             MatchCelebrationScreen(
                 userPhotoUrl = userPhoto,
@@ -89,6 +91,9 @@ fun PranayamNavGraph(
                 matchName = matchName,
                 onSendMessageClick = {
                     navController.popBackStack()
+                    if (conversationId.isNotEmpty()) {
+                        navController.navigate(Screen.Chat.createRoute(conversationId))
+                    }
                 },
                 onKeepSwipingClick = {
                     navController.popBackStack()
@@ -150,6 +155,9 @@ fun PranayamNavGraph(
                 },
                 onNavigateToPermissions = {
                     navController.navigate(Screen.Permissions.route)
+                },
+                onEditProfile = {
+                    navController.navigate(Screen.EditProfile.route)
                 }
             )
         }
@@ -255,12 +263,14 @@ fun MainContainer(
             val encodedUserPhoto = java.net.URLEncoder.encode(currentUser?.photos?.firstOrNull() ?: "", "UTF-8")
             val encodedMatchPhoto = java.net.URLEncoder.encode(profiles.getOrNull(currentIndex - 1)?.photos?.firstOrNull() ?: "", "UTF-8")
             val matchName = profiles.getOrNull(currentIndex - 1)?.name ?: "Someone"
+            val conversationId = match.conversationId ?: ""
 
             parentNavController.navigate(
                 Screen.MatchCelebration.createRoute(
                     encodedUserPhoto,
                     encodedMatchPhoto,
-                    matchName
+                    matchName,
+                    conversationId
                 )
             )
         }
@@ -330,8 +340,14 @@ fun MainContainer(
                         onProfileClick = { parentNavController.navigate(Screen.ProfileDetail.createRoute(it)) },
                         onLike = viewModel::like,
                         onPass = viewModel::pass,
-                        onSuperLike = { },
-                        onMessage = { },
+                        onSuperLike = viewModel::superLike,
+                        onMessage = {
+                            bottomNavController.navigate(MainTab.Matches.route) {
+                                popUpTo(bottomNavController.graph.startDestinationId) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
                         onUndo = viewModel::undo
                     )
                 }
@@ -376,7 +392,8 @@ fun MainContainer(
                         },
                         onNavigateToPermissions = {
                             parentNavController.navigate(Screen.Permissions.route)
-                        }
+                        },
+                        onEditProfile = onEditProfile
                     )
                 }
             }
