@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -26,21 +27,24 @@ import com.pranayam.app.ui.theme.*
 fun ProfileCard(
     profile: Profile,
     onCardClick: () -> Unit,
+    isGuestMode: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
             .height(600.dp)
-            .clickable { onCardClick() },
+            .clickable { if (!isGuestMode) onCardClick() },
         shape = RoundedCornerShape(CornerRadius.L),
         elevation = CardDefaults.cardElevation(defaultElevation = Elevation.Medium)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Photo with pager
+            // Photo with pager (blurred for guests)
             ProfilePhotoPager(
                 photos = profile.photos,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .conditionalBlur(isGuestMode, GuestBlur.PhotoBlur)
             )
 
             // Gradient overlay for text
@@ -58,7 +62,7 @@ fun ProfileCard(
                     )
             )
 
-            // Badges (top)
+            // Badges (top) - visible for guests too
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -82,63 +86,92 @@ fun ProfileCard(
                 }
             }
 
-            // Info (bottom)
-            Column(
+            // Info (bottom) - blurred for guests
+            Box(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(Spacing.M)
+                    .fillMaxWidth()
             ) {
-                // Photo indicators
-                PhotoIndicators(
-                    currentIndex = 0,
-                    totalCount = profile.photos.size,
-                    modifier = Modifier.padding(bottom = Spacing.S)
-                )
-
-                // Name and age
-                Text(
-                    text = "${profile.name}, ${profile.age}",
-                    style = PranayamTypography.H2,
-                    color = Color.White
-                )
-
-                // Profession
-                Text(
-                    text = profile.profession,
-                    style = PranayamTypography.BodyMedium,
-                    color = Color.White.copy(alpha = 0.9f),
-                    modifier = Modifier.padding(top = Spacing.XXS)
-                )
-
-                // Location
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = Spacing.XXS)
+                Column(
+                    modifier = Modifier
+                        .padding(Spacing.M)
+                        .conditionalBlur(isGuestMode, GuestBlur.InfoBlur)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = null,
-                        modifier = Modifier.size(IconSize.S),
-                        tint = Color.White.copy(alpha = 0.8f)
+                    // Photo indicators
+                    PhotoIndicators(
+                        currentIndex = 0,
+                        totalCount = profile.photos.size,
+                        modifier = Modifier.padding(bottom = Spacing.S)
                     )
-                    Spacer(Modifier.width(Spacing.XXS))
-                    Text(
-                        text = "${profile.distance} km away",
-                        style = PranayamTypography.BodySmall,
-                        color = Color.White.copy(alpha = 0.8f)
-                    )
-                }
 
-                // Prompt preview
-                if (profile.prompts.isNotEmpty()) {
+                    // Name and age
                     Text(
-                        text = "\"${profile.prompts.first().answer}\"",
+                        text = if (isGuestMode) "???, ??" else "${profile.name}, ${profile.age}",
+                        style = PranayamTypography.H2,
+                        color = Color.White
+                    )
+
+                    // Profession
+                    Text(
+                        text = if (isGuestMode) "???" else profile.profession.orEmpty(),
                         style = PranayamTypography.BodyMedium,
                         color = Color.White.copy(alpha = 0.9f),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = Spacing.S)
+                        modifier = Modifier.padding(top = Spacing.XXS)
                     )
+
+                    // Location
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = Spacing.XXS)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.size(IconSize.S),
+                            tint = Color.White.copy(alpha = 0.8f)
+                        )
+                        Spacer(Modifier.width(Spacing.XXS))
+                        Text(
+                            text = if (isGuestMode) "??? km away" else "${profile.distance} km away",
+                            style = PranayamTypography.BodySmall,
+                            color = Color.White.copy(alpha = 0.8f)
+                        )
+                    }
+
+                    // Prompt preview (hidden for guests)
+                    if (!isGuestMode && profile.prompts.isNotEmpty()) {
+                        Text(
+                            text = "\"${profile.prompts.first().answer}\"",
+                            style = PranayamTypography.BodyMedium,
+                            color = Color.White.copy(alpha = 0.9f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = Spacing.S)
+                        )
+                    }
+                }
+
+                // Guest mode overlay prompt
+                if (isGuestMode) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .padding(Spacing.M)
+                            .background(
+                                color = Color.Black.copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(CornerRadius.M)
+                            )
+                            .padding(Spacing.M),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Login to see more",
+                            style = PranayamTypography.BodyMedium,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         }

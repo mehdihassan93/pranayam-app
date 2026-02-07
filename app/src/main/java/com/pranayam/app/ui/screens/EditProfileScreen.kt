@@ -43,7 +43,7 @@ fun EditProfileScreen(
     onPhotoRemoved: (Int) -> Unit
 ) {
     var bio by remember { mutableStateOf(profile.bio ?: "") }
-    var profession by remember { mutableStateOf(profile.profession) }
+    var profession by remember { mutableStateOf(profile.profession ?: "") }
     var education by remember { mutableStateOf(profile.education ?: "") }
     
     val photoPickerLauncher = rememberLauncherForActivityResult(

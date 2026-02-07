@@ -45,7 +45,7 @@ fun AccessibleProfileCardWrapper(
         modifier = Modifier.semantics(mergeDescendants = true) {
             contentDescription = buildString {
                 append("${profile.name}, ${profile.age} years old. ")
-                append("${profile.profession}. ")
+                append("${profile.profession.orEmpty()}. ")
                 append("${profile.distance} kilometers away. ")
                 if (profile.isVerified) append("Verified profile. ")
                 if (profile.hasVideo) append("Has video intro. ")

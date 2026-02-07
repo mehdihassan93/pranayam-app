@@ -88,7 +88,7 @@ fun ProfileDetailScreen(
                         }
                     }
                     Text(
-                        text = profile.profession,
+                        text = profile.profession.orEmpty(),
                         style = PranayamTypography.BodyLarge,
                         color = Color.White.copy(alpha = 0.9f)
                     )

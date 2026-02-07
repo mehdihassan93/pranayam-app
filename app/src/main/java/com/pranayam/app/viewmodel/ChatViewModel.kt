@@ -2,7 +2,10 @@ package com.pranayam.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pranayam.app.data.model.Conversation
 import com.pranayam.app.data.model.Message
+import com.pranayam.app.data.model.ContentType
+import com.pranayam.app.data.model.MessageStatus
 import com.pranayam.app.di.UserSessionManager
 import com.pranayam.app.repository.PranayamRepository
 import com.pranayam.app.util.VoiceRecorder
@@ -50,11 +53,17 @@ class ChatViewModel @Inject constructor(
     private val _remoteUserTyping = MutableStateFlow(false)
     val remoteUserTyping: StateFlow<Boolean> = _remoteUserTyping.asStateFlow()
 
+    // Conversations list for ChatListScreen
+    private val _conversations = MutableStateFlow<List<Conversation>>(emptyList())
+    val conversations: StateFlow<List<Conversation>> = _conversations.asStateFlow()
+
     private var recordingJob: Job? = null
+    private var _currentConversationId: String? = null
 
     init {
         // Automatically start listening for real-time events upon entering the chat
         observeSocketEvents()
+        loadConversations()
     }
 
     /**
@@ -76,11 +85,55 @@ class ChatViewModel @Inject constructor(
                 _remoteUserTyping.value = data.optBoolean("isTyping", false)
             }
         }
-        
+
+        // Listen for incoming messages and persist them locally
+        viewModelScope.launch {
+            socketService.messageFlow.collect { data ->
+                val conversationId = data.optString("conversationId", "")
+                val content = data.optString("content", "")
+                val senderId = data.optString("senderId", "")
+                val messageId = data.optString("id", data.optString("_id", java.util.UUID.randomUUID().toString()))
+                val timestamp = data.optString("timestamp", "Just now")
+
+                if (conversationId.isNotEmpty() && content.isNotEmpty()) {
+                    val message = Message(
+                        id = messageId,
+                        text = content,
+                        timestamp = timestamp,
+                        isSent = senderId == userId,
+                        contentType = ContentType.TEXT,
+                        status = MessageStatus.DELIVERED
+                    )
+                    repository.persistMessage(conversationId, message)
+                }
+            }
+        }
+
         // Connect socket with authenticated user ID
         if (userId.isNotEmpty()) {
             socketService.connect(userId)
-        } 
+        }
+    }
+
+    /**
+     * Loads conversations from the API.
+     */
+    private fun loadConversations() {
+        viewModelScope.launch {
+            repository.getConversations().collect { result ->
+                result.onSuccess { _conversations.value = it }
+            }
+        }
+    }
+
+    /**
+     * Joins a conversation: hydrates local DB from API and tracks the active conversation.
+     */
+    fun joinConversation(conversationId: String) {
+        _currentConversationId = conversationId
+        viewModelScope.launch {
+            repository.refreshMessages(conversationId)
+        }
     }
 
     /**
@@ -102,8 +155,8 @@ class ChatViewModel @Inject constructor(
     fun getMessages(conversationId: String): StateFlow<List<Message>> {
         return repository.getMessagesForConversation(conversationId)
             .stateIn(
-                scope = viewModelScope, 
-                started = SharingStarted.WhileSubscribed(5000), 
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
                 initialValue = emptyList()
             )
     }
@@ -115,14 +168,18 @@ class ChatViewModel @Inject constructor(
         val text = _messageText.value.trim()
         if (text.isEmpty() || userId.isEmpty()) return
 
-        // Construct the JSON payload for socket protocol
+        // Persist locally for optimistic UI
+        viewModelScope.launch {
+            repository.sendMessage(conversationId, text)
+        }
+
+        // Also send via socket for real-time delivery
         val data = JSONObject().apply {
             put("conversationId", conversationId)
             put("senderId", userId)
             put("content", text)
             put("recipientId", recipientId)
         }
-
         socketService.sendMessage(data)
 
         // Reset local state
@@ -131,11 +188,11 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
-     * Lifecycle Guard: Closes socket connection when the user leaves the chat screen.
+     * Lifecycle Guard: Do NOT disconnect the singleton SocketService here.
      */
     override fun onCleared() {
         super.onCleared()
-        socketService.disconnect()
+        // SocketService is a Singleton — disconnecting here would kill it for all consumers
     }
 
     /**
@@ -145,7 +202,7 @@ class ChatViewModel @Inject constructor(
         _isRecording.value = true
         _recordingDuration.value = 0
         voiceRecorder.startRecording()
-        
+
         // Start the UI timer job
         recordingJob = viewModelScope.launch {
             while (true) {
@@ -162,7 +219,7 @@ class ChatViewModel @Inject constructor(
         _isRecording.value = false
         recordingJob?.cancel()
         val audioFile = voiceRecorder.stopRecording()
-        
+
         if (audioFile != null && _recordingDuration.value > 0) {
             viewModelScope.launch {
                 // Future Implementation: repository.sendVoiceMessage(conversationId, audioFile, _recordingDuration.value)

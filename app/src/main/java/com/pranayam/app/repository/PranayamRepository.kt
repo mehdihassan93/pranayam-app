@@ -22,9 +22,13 @@ class PranayamRepository @Inject constructor(
 ) {
 
     // Discovery
-    fun getDiscoveryProfiles(userId: String, lat: Double?, long: Double?): Flow<Result<List<Profile>>> = flow {
+    fun getDiscoveryProfiles(lat: Double?, long: Double?, isGuest: Boolean = false): Flow<Result<List<Profile>>> = flow {
         try {
-            val response = apiService.getDiscoveryProfiles(userId, lat, long)
+            val response = if (isGuest) {
+                apiService.getGuestProfiles(lat, long)
+            } else {
+                apiService.getDiscoveryProfiles(lat, long)
+            }
             if (response.isSuccessful) {
                 emit(Result.success(response.body() ?: emptyList()))
             } else {
@@ -35,9 +39,9 @@ class PranayamRepository @Inject constructor(
         }
     }
 
-    suspend fun swipeProfile(userId: String, targetId: String, type: String): Result<com.pranayam.app.data.model.LikeResponse> {
+    suspend fun swipeProfile(targetId: String, type: String): Result<com.pranayam.app.data.model.LikeResponse> {
         return try {
-            val response = apiService.swipeProfile(com.pranayam.app.api.SwipeRequest(userId, targetId, type))
+            val response = apiService.swipeProfile(com.pranayam.app.api.SwipeRequest(targetId, type))
             val body = response.body()
             if (response.isSuccessful && body != null) {
                 Result.success(body)
@@ -60,6 +64,11 @@ class PranayamRepository @Inject constructor(
         } catch (e: Exception) {
             emit(Result.failure(e))
         }
+    }
+
+    // Persist a single incoming message from socket into local DB
+    suspend fun persistMessage(conversationId: String, message: Message) {
+        messageDao.insertMessage(message.toEntity(conversationId))
     }
 
     // Chat Logic with Offline Support

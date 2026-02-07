@@ -20,26 +20,31 @@ interface PranayamApiService {
 
     @GET("discovery/recommendations")
     suspend fun getDiscoveryProfiles(
-        @Query("userId") userId: String,
         @Query("lat") latitude: Double?,
         @Query("long") longitude: Double?,
         @Query("distance") maxDistance: Int = 50
     ): Response<List<Profile>>
 
+    @GET("discovery/recommendations")
+    suspend fun getGuestProfiles(
+        @Query("lat") latitude: Double?,
+        @Query("long") longitude: Double?
+    ): Response<List<Profile>>
+
     @POST("discovery/swipe")
     suspend fun swipeProfile(@Body swipeRequest: SwipeRequest): Response<com.pranayam.app.data.model.LikeResponse>
 
-    @GET("conversations")
+    @GET("chat/conversations")
     suspend fun getConversations(): Response<List<Conversation>>
 
-    @GET("conversations/{id}/messages")
+    @GET("chat/messages/{id}")
     suspend fun getMessages(
         @Path("id") conversationId: String,
         @Query("limit") limit: Int = 20,
         @Query("before") timestamp: String? = null
     ): Response<List<Message>>
 
-    @POST("conversations/{id}/messages")
+    @POST("chat/messages/{id}")
     suspend fun sendMessage(
         @Path("id") conversationId: String,
         @Body messageRequest: SendMessageRequest
@@ -52,7 +57,6 @@ data class SendMessageRequest(
 )
 
 data class SwipeRequest(
-    val userId: String,
     val targetId: String,
     val type: String // "LIKE", "PASS", "SUPERLIKE"
 )

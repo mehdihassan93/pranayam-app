@@ -15,6 +15,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.pranayam.app.di.UserSessionManager
+import com.pranayam.app.ui.components.LoginPromptDialog
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,14 +44,19 @@ import com.pranayam.app.ui.theme.PranayamTypography
 import com.pranayam.app.ui.theme.Spacing
 
 @Composable
-fun PranayamNavGraph(navController: NavHostController) {
+fun PranayamNavGraph(
+    navController: NavHostController,
+    sessionManager: UserSessionManager
+) {
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route
     ) {
         composable(Screen.Splash.route) {
             SplashScreen(onComplete = {
-                navController.navigate(Screen.Auth.route) {
+                // Go directly to Main - guests will see blurred profiles
+                // and get prompted to login after 3 swipes
+                navController.navigate(Screen.Main.route) {
                     popUpTo(Screen.Splash.route) { inclusive = true }
                 }
             })
@@ -155,28 +165,24 @@ fun PranayamNavGraph(navController: NavHostController) {
             arguments = listOf(navArgument("profileId") { type = NavType.StringType })
         ) { backStackEntry ->
             val profileId = backStackEntry.arguments?.getString("profileId") ?: return@composable
-            val mockProfile = com.pranayam.app.data.model.Profile(
-                id = profileId,
-                name = "Aparna",
-                age = 24,
-                photos = listOf("https://images.unsplash.com/photo-1544005313-94ddf0286df2"),
-                profession = "Software Engineer",
-                distance = 5,
-                isVerified = true,
-                hasVideo = true,
-                prompts = listOf(com.pranayam.app.data.model.Prompt("My favorite thing about Kerala is", "The food!")),
-                languages = listOf("Malayalam", "English"),
-                bio = "Just a software engineer looking for someone to explore the backwaters with.",
-                height = 165,
-                education = "B.Tech Computer Science"
-            )
+            val homeViewModel: HomeViewModel = hiltViewModel()
+            val profiles by homeViewModel.profiles.collectAsState()
+            val profile = profiles.find { it.id == profileId }
 
-            ProfileDetailScreen(
-                profile = mockProfile,
-                onBack = { navController.popBackStack() },
-                onLike = { },
-                onPass = { }
-            )
+            if (profile != null) {
+                ProfileDetailScreen(
+                    profile = profile,
+                    onBack = { navController.popBackStack() },
+                    onLike = {
+                        homeViewModel.like()
+                        navController.popBackStack()
+                    },
+                    onPass = {
+                        homeViewModel.pass()
+                        navController.popBackStack()
+                    }
+                )
+            }
         }
 
         composable(
@@ -185,6 +191,10 @@ fun PranayamNavGraph(navController: NavHostController) {
         ) { backStackEntry ->
             val conversationId = backStackEntry.arguments?.getString("conversationId") ?: return@composable
             val viewModel: ChatViewModel = hiltViewModel()
+
+            LaunchedEffect(conversationId) {
+                viewModel.joinConversation(conversationId)
+            }
 
             val messages by viewModel.getMessages(conversationId).collectAsState()
             val messageText by viewModel.messageText.collectAsState()
@@ -227,7 +237,12 @@ fun MainContainer(
     val profiles by viewModel.profiles.collectAsState()
     val currentIndex by viewModel.currentIndex.collectAsState()
     val currentUser by viewModel.currentUserProfile.collectAsState()
+    val isGuestMode by viewModel.isGuestMode.collectAsState()
 
+    // State for login prompt dialog
+    var showLoginDialog by remember { mutableStateOf(false) }
+
+    // Observe Match Celebrations
     LaunchedEffect(Unit) {
         viewModel.matchEvent.collect { match ->
             val encodedUserPhoto = java.net.URLEncoder.encode(currentUser?.photos?.firstOrNull() ?: "", "UTF-8")
@@ -242,6 +257,29 @@ fun MainContainer(
                 )
             )
         }
+    }
+
+    // Observe login prompt event for guest users
+    LaunchedEffect(Unit) {
+        viewModel.showLoginPrompt.collect {
+            showLoginDialog = true
+        }
+    }
+
+    // Login prompt dialog
+    if (showLoginDialog) {
+        LoginPromptDialog(
+            onLoginClick = {
+                showLoginDialog = false
+                parentNavController.navigate(Screen.Auth.route) {
+                    popUpTo(Screen.Main.route) { inclusive = true }
+                }
+            },
+            onDismiss = {
+                showLoginDialog = false
+                viewModel.resetGuestSwipeCount()
+            }
+        )
     }
 
     Scaffold(
@@ -281,6 +319,7 @@ fun MainContainer(
                     HomeScreen(
                         profiles = profiles,
                         currentIndex = currentIndex,
+                        isGuestMode = isGuestMode,
                         onProfileClick = { parentNavController.navigate(Screen.ProfileDetail.createRoute(it)) },
                         onLike = viewModel::like,
                         onPass = viewModel::pass,
@@ -290,9 +329,12 @@ fun MainContainer(
                     )
                 }
                 composable(MainTab.Matches.route) {
+                    val chatViewModel: ChatViewModel = hiltViewModel()
+                    val conversations by chatViewModel.conversations.collectAsState()
+
                     ChatListScreen(
                         matches = emptyList(),
-                        conversations = emptyList(),
+                        conversations = conversations,
                         onChatClick = { parentNavController.navigate(Screen.Chat.createRoute(it)) }
                     )
                 }
@@ -308,14 +350,18 @@ fun MainContainer(
                     }
                 }
                 composable(MainTab.Settings.route) {
+                    val authViewModel: AuthViewModel = hiltViewModel()
+
                     SettingsScreen(
                         onBack = { bottomNavController.navigate(MainTab.Home.route) },
                         onLogout = {
+                            authViewModel.logout()
                             parentNavController.navigate(Screen.Auth.route) {
                                 popUpTo(0) { inclusive = true }
                             }
                         },
                         onDeleteAccount = {
+                            authViewModel.logout()
                             parentNavController.navigate(Screen.Auth.route) {
                                 popUpTo(0) { inclusive = true }
                             }
@@ -358,7 +404,7 @@ fun ProfileScreen(
         )
 
         Text(
-            text = profile.profession,
+            text = profile.profession.orEmpty(),
             style = PranayamTypography.BodyMedium,
             color = PranayamColors.TextSecondaryLight
         )
