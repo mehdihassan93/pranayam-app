@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -103,7 +105,7 @@ fun SettingsScreen(
             }
             item {
                 SettingsToggleItem(
-                    icon = Icons.Default.Chat,
+                    icon = Icons.AutoMirrored.Filled.Chat,
                     title = "Messages",
                     subtitle = "Get notified for new messages",
                     checked = messageNotifications,
@@ -171,7 +173,7 @@ fun SettingsScreen(
             }
             item {
                 SettingsItem(
-                    icon = Icons.Default.Help,
+                    icon = Icons.AutoMirrored.Filled.Help,
                     title = "Help Center",
                     subtitle = "FAQs and support",
                     onClick = { uriHandler.openUri("https://pranayam.app/help") }

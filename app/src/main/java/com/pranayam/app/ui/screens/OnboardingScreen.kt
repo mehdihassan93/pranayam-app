@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -61,7 +62,7 @@ fun OnboardingScreen(
                 navigationIcon = {
                     if (currentStep != OnboardingStep.NAME) {
                         IconButton(onClick = viewModel::previousStep) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     }
                 }
@@ -77,7 +78,7 @@ fun OnboardingScreen(
         ) {
             // Progress Indicator
             LinearProgressIndicator(
-                progress = (currentStep.ordinal + 1).toFloat() / OnboardingStep.values().size,
+                progress = { (currentStep.ordinal + 1).toFloat() / OnboardingStep.entries.size },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(8.dp)

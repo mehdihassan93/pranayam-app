@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -211,7 +212,7 @@ fun SwipeActionBar(
             }
             
             CircularIconButton(
-                icon = Icons.Default.Chat,
+                icon = Icons.AutoMirrored.Filled.Chat,
                 onClick = onMessage,
                 backgroundColor = Color.White,
                 iconColor = PranayamColors.PurplePrimary,
